@@ -8,7 +8,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     height: 100%;
-    background: #e9e9e7;
+    background: #0a0a0a;
   }
   body {
     display: flex;
@@ -20,7 +20,7 @@
   .stage {
     position: relative;
     width: min(70vw, 600px);
-    aspect-ratio: 1524 / 2511;
+    aspect-ratio: 2070 / 3070;
   }
   .layer {
     position: absolute;
@@ -47,32 +47,32 @@
   }
   .tree-left {
     left: 0%;
-    top: 32.02%;
-    width: 31.50%;
-    height: 67.98%;
+    top: 30.94%;
+    width: 33.82%;
+    height: 57.00%;
     transform-origin: 50% 80%;
   }
   .tree-right {
-    left: 68.24%;
-    top: 31.38%;
-    width: 31.76%;
-    height: 68.62%;
+    left: 66.18%;
+    top: 32.57%;
+    width: 33.82%;
+    height: 55.37%;
     transform-origin: 50% 80%;
   }
   .stage:hover .tree-left {
     transform: translate(-3%, -4%) scale(1.06) rotate(-1.5deg);
-    filter: drop-shadow(12px 18px 24px rgba(0,0,0,0.25));
+    filter: drop-shadow(10px 14px 18px rgba(0,0,0,0.6)) drop-shadow(0 0 24px rgba(255,245,225,0.2));
   }
   .stage:hover .tree-right {
     transform: translate(3%, -4%) scale(1.06) rotate(1.5deg);
-    filter: drop-shadow(-12px 18px 24px rgba(0,0,0,0.25));
+    filter: drop-shadow(-10px 14px 18px rgba(0,0,0,0.6)) drop-shadow(0 0 24px rgba(255,120,80,0.2));
   }
   .hint {
     position: absolute;
     bottom: -40px;
     left: 0; right: 0;
     text-align: center;
-    color: #999;
+    color: #777;
     font-family: -apple-system, sans-serif;
     font-size: 13px;
     letter-spacing: 0.05em;
@@ -82,13 +82,13 @@
 <body>
   <div class="stage">
     <div class="layer scene">
-      <img src="assets/scene_bg_gray.webp" alt="배경">
+      <img src="assets/scene_line.webp" alt="배경">
     </div>
     <div class="layer tree tree-left">
-      <img src="assets/tree_left_gray.webp" alt="왼쪽 소나무">
+      <img src="assets/tree_left_line.webp" alt="왼쪽 소나무">
     </div>
     <div class="layer tree tree-right">
-      <img src="assets/tree_right_gray.webp" alt="오른쪽 소나무">
+      <img src="assets/tree_right_line.webp" alt="오른쪽 소나무">
     </div>
     <div class="hint">마우스를 올려보세요 (hover)</div>
   </div>
