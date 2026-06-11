@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe - immersive-g.com</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: #333;
+    background: #e9e9e7;
+    line-height: 1.4;
+  }
+  .wf-box {
+    border: 1px dashed #999;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    padding: 8px;
+  }
+  .label {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    background: rgba(255,255,255,0.7);
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #999;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    z-index: 5;
+  }
+
+  /* Fixed header */
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 5%;
+    z-index: 50;
+    pointer-events: none;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+  }
+  .logo { font-weight: 600; }
+  nav a { color: #555; text-decoration: none; }
+
+  /* Fixed footer bar */
+  .fixed-footer {
+    position: fixed;
+    bottom: 24px; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 5%;
+    font-size: 13px;
+    color: #777;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  section {
+    position: relative;
+    min-height: 100vh;
+    padding: 120px 8%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* Hero */
+  .hero h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(28px, 4vw, 44px);
+    max-width: 700px;
+  }
+  .hero .embossed-note {
+    position: absolute;
+    right: 8%;
+    bottom: 25%;
+    width: 220px;
+    height: 220px;
+  }
+
+  /* Reveal quote */
+  .quote-block {
+    align-items: flex-start;
+  }
+  .quote-block p {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(24px, 3.5vw, 40px);
+    max-width: 620px;
+    line-height: 1.3;
+  }
+
+  /* Section heading (Our approach / Our mission) */
+  .section-heading {
+    align-items: center;
+    text-align: center;
+  }
+  .section-heading .eyebrow {
+    color: #999;
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  .section-heading h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(22px, 3vw, 38px);
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* Project block: image + caption, alternating sides */
+  .project-block {
+    display: flex;
+    flex-direction: column;
+    gap: 60px;
+    min-height: 140vh;
+    padding-top: 160px;
+    padding-bottom: 160px;
+  }
+  .project-media {
+    position: relative;
+    width: 60%;
+    aspect-ratio: 16/10;
+  }
+  .project-media .tag {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    font-size: 11px;
+    color: #aaa;
+    background: rgba(0,0,0,0.05);
+    padding: 2px 8px;
+  }
+  .project-caption {
+    width: 50%;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(18px, 2vw, 26px);
+    line-height: 1.5;
+  }
+  .align-left .project-media { align-self: flex-start; }
+  .align-left .project-caption { align-self: flex-start; }
+  .align-right .project-media { align-self: flex-end; }
+  .align-right .project-caption { align-self: flex-end; text-align: right; }
+
+  @media (max-width: 760px) {
+    .project-media, .project-caption { width: 100%; }
+    .align-left .project-caption, .align-right .project-caption { text-align: left; }
+    section { padding: 100px 6%; }
+    .hero .embossed-note { display: none; }
+  }
+
+  .scroll-list {
+    list-style: none;
+    font-size: 12px;
+    color: #bbb;
+    margin-top: 80px;
+  }
+  .scroll-list li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+  <!-- Fixed Header -->
+  <header>
+    <div class="logo">⛬ IMMERSIVE GARDEN</div>
+    <nav><a href="#">About</a></nav>
+  </header>
+
+  <!-- Fixed footer bar (persists across scroll) -->
+  <div class="fixed-footer">
+    <span>See all projects →</span>
+    <span>● 메뉴/인디케이터</span>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <span class="label">Hero (배경: 엠보싱 텍스처 + 꽃 부조 이미지, 풀스크린)</span>
+    <h1>Innovative digital experiences studio</h1>
+    <div class="wf-box embossed-note">엠보싱 장식 오브젝트<br>(스크롤에 따라 페이드/이동)</div>
+  </section>
+
+  <!-- Reveal quote (scroll-triggered text reveal) -->
+  <section class="quote-block">
+    <span class="label">Scroll-reveal Quote (텍스트가 스크롤에 따라 한 줄씩 진해짐)</span>
+    <p>Transcend anything seen or felt before by crafting unparalleled experiences for ambitious brands.</p>
+  </section>
+
+  <!-- Showreel -->
+  <section style="align-items:center; justify-content:center;">
+    <span class="label">Showreel</span>
+    <div class="wf-box" style="width:70%; aspect-ratio:16/9;">
+      쇼릴 영상 (모니터/스크린 합성 이미지 안에 재생, ▶ Showreel)
+    </div>
+  </section>
+
+  <!-- Project 1: Louis Vuitton VIA (left aligned media + caption) -->
+  <div class="project-block align-left">
+    <span class="label">Project — Louis Vuitton VIA</span>
+    <div class="wf-box project-media">
+      이미지/영상 1 (풍경+제품 합성)
+      <span class="tag">Louis Vuitton VIA</span>
+    </div>
+    <p class="project-caption">Explore our collaboration with Louis Vuitton on VIA, showcasing the Maison's Web 3 vision through its first digital trunk.</p>
+    <div class="wf-box project-media" style="align-self:flex-end;">
+      이미지 2 (미러룸 + 제품)
+      <span class="tag">Web Experience</span>
+    </div>
+  </div>
+
+  <!-- Section heading: Our approach -->
+  <section class="section-heading">
+    <span class="label">Section heading</span>
+    <div class="eyebrow">Our approach</div>
+    <h2>A global leader in groundbreaking digital design and strategy, we help forward-thinking clients achieve impact and growth.</h2>
+  </section>
+
+  <!-- Project 2: David Whyte (right aligned media, left caption below) -->
+  <div class="project-block align-right">
+    <span class="label">Project — David Whyte</span>
+    <div class="wf-box project-media">
+      인터랙티브 일러스트 (워터컬러 풍경, "Open the landscape" 인터랙션)
+      <span class="tag">David Whyte Experience</span>
+    </div>
+    <p class="project-caption" style="align-self:flex-start; text-align:left;">Step into David Whyte's poetry in a digital journey, capturing life's profound moments with artistic depth.</p>
+  </div>
+
+  <!-- Project 3: Cartier (centered media + caption) -->
+  <div class="project-block">
+    <span class="label">Project — Cartier End of Year</span>
+    <div class="wf-box project-media" style="align-self:center; width:55%;">
+      구름 위 주얼리 이미지/영상
+      <span class="tag">Cartier End of Year 22</span>
+    </div>
+    <p class="project-caption" style="align-self:flex-start;">Discover Cartier's End of Year: redefining elegance with an immersive campaign, Above the Clouds.</p>
+    <div class="wf-box project-media" style="align-self:flex-end; width:45%;">
+      반지/제품 클로즈업 이미지
+    </div>
+  </div>
+
+  <!-- Section heading: Our mission -->
+  <section class="section-heading">
+    <span class="label">Section heading</span>
+    <div class="eyebrow">Our mission</div>
+    <h2>We partner with exceptional clients, helping drive their success.</h2>
+  </section>
+
+  <!-- Project 4: Chartogne-Taillet -->
+  <div class="project-block">
+    <span class="label">Project — Chartogne-Taillet</span>
+    <div class="wf-box project-media" style="align-self:center; width:55%;">
+      빈티지 지도/포도밭 일러스트 (인터랙티브 핀)
+    </div>
+    <p class="project-caption" style="align-self:flex-end; text-align:right;">Explore the rich heritage and vineyards of Chartogne-Taillet through immersive digital storytelling.</p>
+  </div>
+
+  <!-- Footer / End -->
+  <section style="align-items:center; text-align:center;">
+    <span class="label">Footer</span>
+    <div class="wf-box" style="width:100%; padding:60px;">
+      연락처(inquiries@immersive-g.com) / Paris 75010 / 소셜 링크 / 모든 프로젝트 보기 CTA
+    </div>
+    <ul class="scroll-list">
+      <li>※ 위와 같은 패턴(이미지·영상 + 세리프체 캡션, 좌우 교차 배치)이 추가 프로젝트마다 반복됨</li>
+      <li>※ 전체 배경에 엠보싱(부조) 텍스처와 꽃/식물 오브젝트가 스크롤 진행에 따라 등장·퇴장</li>
+      <li>※ 헤더/하단 바는 스크롤 동안 고정(fixed) 상태 유지</li>
+    </ul>
+  </section>
+
+</body>
+</html>
