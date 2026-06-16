@@ -1,0 +1,228 @@
+/* ============================================
+   FONTS
+   웹폰트: https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css
+   family명: MaruBuriExtraLight / MaruBuriLight / MaruBuri / MaruBuriSemiBold / MaruBuriBold
+   ============================================ */
+
+
+/* ============================================
+   RESET & BASE
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg:   #e8e4dc;
+  --color-text: #1e1b16;
+  --font-main:  'MaruBuri', serif;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: auto; /* GSAP이 제어 */
+}
+
+body {
+  font-family: var(--font-main);
+  color: var(--color-text);
+  background: var(--color-bg);
+  overflow-x: hidden;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+
+/* ============================================
+   SECTION 01 · HERO
+   ============================================ */
+.s-hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+
+/* --- 배경 — Three.js 캔버스 컨테이너 --- */
+.s-hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+#hero-canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+
+/* --- 상단 바 --- */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 48px;
+}
+
+.top-bar__logo {
+  height: 32px;
+}
+
+.top-bar__logo-img {
+  height: 100%;
+  width: auto;
+}
+
+/* 펼쳐보기 버튼 */
+.btn-expand {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  padding: 4px 0;
+  position: relative;
+  transition: opacity 0.2s;
+}
+
+.btn-expand::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.btn-expand:hover {
+  opacity: 0.7;
+}
+
+.btn-expand:hover::after {
+  transform: scaleX(1);
+}
+
+
+/* --- 스크롤 전환 텍스트 --- */
+.s-hero__copy {
+  position: absolute;
+  left: 9%;
+  top: 54%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.s-hero__line {
+  font-size: clamp(15px, 1.1vw, 21px);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+  /* 두 줄 겹쳐서 배치 */
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  will-change: opacity, transform;
+}
+
+.s-hero__line strong {
+  font-family: 'MaruBuriBold', serif;
+  font-weight: normal;
+}
+
+/* 2번째 텍스트는 JS에서 초기화 */
+.s-hero__line--2 {
+  opacity: 0;
+}
+
+
+/* --- 좌하단 로고 --- */
+.s-hero__logo-bottom {
+  position: absolute;
+  bottom: 34px;
+  left: 48px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.s-hero__logo-mark {
+  width: 34px;
+  height: auto;
+}
+
+.s-hero__logo-name {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   다음 섹션 플레이스홀더 (임시)
+   ============================================ */
+.next-section-placeholder {
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 1024px) {
+  .top-bar {
+    padding: 18px 32px;
+  }
+
+  .s-hero__copy {
+    left: 6%;
+    top: 56%;
+  }
+
+  .s-hero__logo-bottom {
+    left: 32px;
+    bottom: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-bar {
+    padding: 16px 24px;
+  }
+
+  .s-hero__copy {
+    left: 5%;
+    top: 60%;
+  }
+
+  .s-hero__logo-bottom {
+    left: 24px;
+    bottom: 24px;
+  }
+}
