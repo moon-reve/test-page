@@ -45,8 +45,32 @@
 
   </section>
 
-  <!-- 다음 섹션 자리 -->
-  <div class="next-section-placeholder"></div>
+  <!-- ==========================================
+       SECTION 02 · VIDEO REVEAL
+       배경 동일 PNG + clip-path 마스크 확장
+  =========================================== -->
+  <section class="s-video" id="section-video">
+
+    <!-- 배경 텍스처 (hero와 동일 PNG, CSS) -->
+    <div class="s-video__bg"></div>
+
+    <!-- 우상단 영상보기 버튼 -->
+    <button class="btn-watch" type="button">영상보기</button>
+
+    <!-- 마스크 컨테이너 — clip-path가 스크롤에 따라 확장 -->
+    <div class="s-video__mask">
+      <video
+        class="s-video__player"
+        src="assets/video/main-video.mp4"
+        poster="assets/images/video-poster.png"
+        autoplay
+        muted
+        loop
+        playsinline
+      ></video>
+    </div>
+
+  </section>
 
   <!-- Three.js -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.min.js"></script>

@@ -106,6 +106,32 @@ gsap.set(line2, { opacity: 0, y: 14 });
 
 
 /* ============================================
+   SECTION 02 · VIDEO MASK REVEAL
+
+   - 섹션 pin (1000px 동안 유지)
+   - clip-path: 작은 액자 → 전체 화면으로 확장
+   - scrub: 스크롤 속도에 정직하게 반응
+   ============================================ */
+gsap.fromTo('.s-video__mask',
+  {
+    clipPath: 'inset(20% 25% 20% 25%)',
+  },
+  {
+    clipPath: 'inset(0% 0% 0% 0%)',
+    ease: 'none',
+    scrollTrigger: {
+      trigger: '.s-video',
+      start: 'top top',
+      end: '+=1000',
+      pin: true,
+      scrub: 1,
+      // markers: true,
+    },
+  }
+);
+
+
+/* ============================================
    스크롤 트리거 · pin + 텍스트 크로스페이드
 
    - 섹션을 top에 고정(pin)
