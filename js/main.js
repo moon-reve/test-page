@@ -121,11 +121,13 @@ gsap.set(line2, { opacity: 0, y: 14 });
       vec2 cp = vec2(cos(angle), sin(angle));
 
       // ── 1. 불규칙한 외곽선 ─────────────────────
-      // 저주파 FBM으로 반경을 각도마다 다르게 (먹붓 윤곽)
-      float edgeNoise = fbm(cp * 3.2 + vec2(3.7, 1.9));
-      float roughR    = r * (0.76 + edgeNoise * 0.40); // 0.76r ~ 1.16r
+      // 저주파: 큰 굴곡 / 고주파: 잔 털 같은 엣지
+      float edgeNoise  = fbm(cp * 3.0 + vec2(3.7, 1.9));
+      float edgeNoise2 = fbm(cp * 8.0 + vec2(1.2, 4.8));
+      float roughR     = r * (0.62 + edgeNoise * 0.48 + edgeNoise2 * 0.18);
 
-      float body = 1.0 - smoothstep(roughR * 0.78, roughR, d);
+      // 안쪽도 거칠게: transition 폭 넓힘
+      float body = 1.0 - smoothstep(roughR * 0.60, roughR, d);
 
       // ── 2. 붓털 (bristle) ──────────────────────
       // 고주파 FBM으로 경계 바깥에 뻗는 가는 털
@@ -216,10 +218,11 @@ gsap.set(line2, { opacity: 0, y: 14 });
   ));
 
   // ── 마우스 트래킹 + 속도 계산 ──────────────────
-  const mouseUV   = new THREE.Vector2(0.5, -1.0);
-  const prevMouse = new THREE.Vector2(0.5, -1.0);
-  let velX = 0, velY = 0;  // 스무딩된 속도
-  let dirX = 0, dirY = 1;  // 마지막 유효 이동 방향
+  const mouseUV    = new THREE.Vector2(0.5, -1.0); // 실제 마우스
+  const smoothMouse = new THREE.Vector2(0.5, -1.0); // 딜레이 적용 마우스
+  const prevMouse  = new THREE.Vector2(0.5, -1.0);
+  let velX = 0, velY = 0;
+  let dirX = 0, dirY = 1;
   let isInHero = false;
 
   heroEl.addEventListener('mousemove', (e) => {
@@ -239,22 +242,25 @@ gsap.set(line2, { opacity: 0, y: 14 });
   function tick() {
     requestAnimationFrame(tick);
 
-    // 속도 스무딩
-    const rawVX = mouseUV.x - prevMouse.x;
-    const rawVY = mouseUV.y - prevMouse.y;
+    // 딜레이: smoothMouse가 mouseUV를 천천히 따라옴
+    smoothMouse.x += (mouseUV.x - smoothMouse.x) * 0.06;
+    smoothMouse.y += (mouseUV.y - smoothMouse.y) * 0.06;
+
+    // 속도 스무딩 (smoothMouse 기준으로 계산)
+    const rawVX = smoothMouse.x - prevMouse.x;
+    const rawVY = smoothMouse.y - prevMouse.y;
     velX += (rawVX - velX) * 0.25;
     velY += (rawVY - velY) * 0.25;
-    prevMouse.copy(mouseUV);
+    prevMouse.copy(smoothMouse);
 
     const speed = Math.sqrt(velX * velX + velY * velY);
     if (speed > 0.0003) { dirX = velX / speed; dirY = velY / speed; }
 
-    // 속도 → 늘어남 비율 (정지=1.0 원형, 빠름=최대 2.4배)
     const elongate = 1.0 + Math.min(speed * 130.0, 1.4);
 
     // Pass 1
     accumUniforms.uPrev.value = rtA.texture;
-    accumUniforms.uMouse.value.copy(mouseUV);
+    accumUniforms.uMouse.value.copy(smoothMouse);
     accumUniforms.uVelocity.value.set(dirX, dirY);
     accumUniforms.uElongate.value = elongate;
     accumUniforms.uStamp.value    = isInHero ? 0.18 : 0.0;
