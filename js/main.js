@@ -82,11 +82,6 @@ gsap.set(line2, { opacity: 0, y: 14 });
   `;
 
   // ── 프래그먼트 셰이더 ─────────────────────────
-  // 핵심:
-  //   1. bumpAlpha: 범프 높이에 따라 투명도 0.28 → 1.0
-  //      → 평면 구간: 흐릿, 범프 구간: 완전 불투명
-  //   2. 컨택트 섀도: 범프 기저부(경사 최대 구간) 어둡게
-  //   3. 스펙큘러 하이라이트: 범프 정상부 밝게
   const fragmentShader = /* glsl */`
     uniform sampler2D uTexture;
     uniform float     uStrength;
@@ -97,35 +92,12 @@ gsap.set(line2, { opacity: 0, y: 14 });
     void main() {
       vec4 color = texture2D(uTexture, vUv);
 
-      // ── 1. 알파: 범프 높이 기반 (평면=0.28, 범프=1.0) ──
+      // 알파: 평면=0.01, 범프=1.0
       float bumpNorm  = vHeight / max(uStrength, 0.001);
-      float bumpAlpha = mix(0.28, 1.0, smoothstep(0.0, 0.35, bumpNorm));
+      float bumpAlpha = mix(0.01, 1.0, smoothstep(0.0, 0.35, bumpNorm));
 
-      // ── 2. 법선 기반 조명 ────────────────────────────
-      float dHx = dFdx(vHeight);
-      float dHy = dFdy(vHeight);
-      vec3  N   = normalize(vec3(-dHx * 18.0, dHy * 18.0, 1.0));
-
-      vec3  L   = normalize(vec3(0.8, 1.0, 1.8));
-      vec3  V   = vec3(0.0, 0.0, 1.0);
-      vec3  H   = normalize(L + V);
-
-      float diffuseStr = 0.32;
-      float Lz         = dot(vec3(0,0,1), normalize(vec3(0.8,1.0,1.8)));
-      float ambient    = 1.0 - Lz * diffuseStr;
-      float diffuse    = max(dot(N, L), 0.0) * diffuseStr;
-      float specular   = pow(max(dot(N, H), 0.0), 80.0) * 0.18;
-
-      // ── 3. 컨택트 섀도 — 범프 기저부(경사 최대 구간) 어둡게 ──
-      float slope       = length(vec2(dHx, dHy));
-      float contactDark = 1.0 - clamp(slope * 10.0, 0.0, 0.45);
-
-      // ── 4. 범프 정상부 밝기 보정 ─────────────────────
-      float peakBoost = 1.0 + smoothstep(0.6, 1.0, bumpNorm) * 0.12;
-
-      float lighting = (ambient + diffuse + specular) * contactDark * peakBoost;
-
-      gl_FragColor = vec4(color.rgb * lighting, bumpAlpha);
+      // 조명 없이 원본 색 그대로 (볼록 느낌만)
+      gl_FragColor = vec4(color.rgb, bumpAlpha);
     }
   `;
 
