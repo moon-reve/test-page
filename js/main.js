@@ -32,7 +32,8 @@ gsap.set(line2, { opacity: 0, y: 14 });
   renderer.setSize(W, H);
   renderer.setClearColor(0x000000, 0);
 
-  const orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  orthoCamera.position.z = 1;
 
   // ── Ping-pong 렌더 타겟 (512×512, 충분히 부드러움) ──
   const RT = 512;
@@ -114,7 +115,6 @@ gsap.set(line2, { opacity: 0, y: 14 });
 
   const finalVert = /* glsl */`
     uniform sampler2D uHeightMap;
-    uniform float     uStrength;
     uniform float     uTexAspect;
     uniform vec2      uResolution;
 
@@ -131,14 +131,10 @@ gsap.set(line2, { opacity: 0, y: 14 });
         float scale = screenAspect / uTexAspect;
         coverUV.x = coverUV.x * scale + (1.0 - scale) * 0.5;
       }
-      vUv = coverUV;
+      vUv     = coverUV;
+      vHeight = texture2D(uHeightMap, uv).r;
 
-      float h  = texture2D(uHeightMap, uv).r;
-      vHeight  = h;
-      vec3 pos = position;
-      pos.z   += h * uStrength;
-
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      gl_Position = vec4(position.xy, 0.0, 1.0);
     }
   `;
 
@@ -157,7 +153,6 @@ gsap.set(line2, { opacity: 0, y: 14 });
   const finalUniforms = {
     uTexture:    { value: texture },
     uHeightMap:  { value: rtA.texture },
-    uStrength:   { value: 0.16 },
     uTexAspect:  { value: TEX_ASPECT },
     uResolution: { value: new THREE.Vector2(W, H) },
   };
