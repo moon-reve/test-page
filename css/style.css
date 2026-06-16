@@ -63,8 +63,7 @@ button {
 
 #hero-canvas {
   display: block;
-  width: 100% !important;
-  height: 100% !important;
+  /* Three.js가 setSize()로 직접 관리 — CSS 오버라이드 없음 */
 }
 
 

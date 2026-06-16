@@ -61,22 +61,23 @@ gsap.set(line2, { opacity: 0, y: 14 });
   const material = new THREE.MeshStandardMaterial({
     map:       bgTex,
     bumpMap:   bumpTex,
-    bumpScale: 0.06,   // 양각 강도 — 클수록 깊이감 증가 (음수 반전)
-    roughness: 0.85,
+    bumpScale: 0.18,   // 양각 강도 — 높을수록 깊이감 증가
+    roughness: 0.9,
     metalness: 0.0,
   });
 
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
   scene.add(plane);
 
-  // 기본 환경광 (마우스가 없어도 배경이 보임)
-  const ambient = new THREE.AmbientLight(0xfff6e8, 0.9);
+  // 기본 환경광 — 낮게 유지해야 DirectionalLight 대비가 보임
+  const ambient = new THREE.AmbientLight(0xfff6e8, 0.55);
   scene.add(ambient);
 
-  // 마우스 따라 움직이는 포인트 라이트
-  const pointLight = new THREE.PointLight(0xfffaf0, 1.4, 3.5);
-  pointLight.position.set(0, 0, 0.4);
-  scene.add(pointLight);
+  // DirectionalLight: 방향에 따라 bumpMap 음영 뚜렷하게 표현
+  // PointLight보다 양각 효과가 훨씬 강하게 나타남
+  const dirLight = new THREE.DirectionalLight(0xfffaf0, 1.8);
+  dirLight.position.set(0, 0.5, 1);
+  scene.add(dirLight);
 
   // 마우스 → 정규화 좌표 (-1 ~ 1)
   let targetX = 0, targetY = 0;
@@ -92,13 +93,13 @@ gsap.set(line2, { opacity: 0, y: 14 });
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // 렌더 루프 — lerp로 빛이 부드럽게 따라옴
+  // 렌더 루프 — lerp로 빛 방향이 부드럽게 따라옴
   function tick() {
     requestAnimationFrame(tick);
-    lx += (targetX - lx) * 0.07;
-    ly += (targetY - ly) * 0.07;
-    pointLight.position.x = lx;
-    pointLight.position.y = ly;
+    lx += (targetX - lx) * 0.06;
+    ly += (targetY - ly) * 0.06;
+    // 마우스 위치를 빛의 방향 벡터로 변환 (얕은 각도일수록 음영 강조)
+    dirLight.position.set(lx * 2.5, ly * 1.8, 1.0);
     renderer.render(scene, camera);
   }
   tick();
