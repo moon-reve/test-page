@@ -12,48 +12,117 @@ gsap.set(line2, { opacity: 0, y: 14 });
 
 
 /* ============================================
-   양각 호버 효과 — Three.js 커스텀 셰이더
+   붓터치 호버 효과 — Two-pass render
 
-   원리:
-   - 배경: #e1e1e1 (CSS) + 투명 캔버스 (alpha: true)
-   - 평면 구간: PNG 알파 낮음(0.28) → e1e1e1 위에 흐릿하게 깔림
-   - 마우스 근처: Gaussian bump으로 솟아오르며 알파 1.0 + 3D 조명
-   - 범프 기저부: 컨택트 섀도(어두운 고리) → "들려올라오는" 느낌
+   Pass 1 (누적 버퍼):
+     - 매 프레임 마우스 위치에 타원형 스탬프 찍기
+     - 이전 프레임 * decay → 서서히 사라지는 잔상
+     - ping-pong WebGLRenderTarget (512×512)
+
+   Pass 2 (최종 렌더):
+     - 누적 텍스처를 height map으로 읽어 버텍스 변위
+     - 알파: height 낮으면 투명(e1e1e1 바닥 노출), 높으면 불투명
    ============================================ */
 (function initHeroBg() {
   const canvas = document.getElementById('hero-canvas');
+  let W = window.innerWidth, H = window.innerHeight;
 
-  // alpha: true → 캔버스 배경 투명, CSS #e1e1e1 바닥이 비침
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x000000, 0); // 완전 투명
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x000000, 0);
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-  camera.position.z = 1;
+  const orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
+  // ── Ping-pong 렌더 타겟 (512×512, 충분히 부드러움) ──
+  const RT = 512;
+  const rtOpts = {
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    format: THREE.RGBAFormat,
+    type: THREE.HalfFloatType,
+  };
+  let rtA = new THREE.WebGLRenderTarget(RT, RT, rtOpts);
+  let rtB = new THREE.WebGLRenderTarget(RT, RT, rtOpts);
+
+  // ── Pass 1: 누적 셰이더 ────────────────────────────
+  // uMouse: 마우스 UV (0~1, y 반전)
+  // uVelocity: 이동 방향 단위벡터 → 타원 방향 결정
+  // uDecay: 잔상 지속 시간 (0.982 ≈ ~3초 후 소멸)
+  // uStamp: 이번 프레임 찍는 양 (마우스 없으면 0)
+  const accumVert = /* glsl */`
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `;
+
+  const accumFrag = /* glsl */`
+    precision highp float;
+    uniform sampler2D uPrev;
+    uniform vec2  uMouse;
+    uniform vec2  uVelocity;
+    uniform float uDecay;
+    uniform float uRadius;
+    uniform float uStamp;
+    uniform float uAspect;
+    varying vec2  vUv;
+
+    void main() {
+      float prev = texture2D(uPrev, vUv).r * uDecay;
+
+      // aspect 보정 후 속도 방향으로 좌표 회전
+      vec2 diff  = vUv - uMouse;
+      diff.x    *= uAspect;
+      vec2 vel   = normalize(uVelocity + vec2(0.00001, 0.0));
+      vec2 local = vec2(
+         diff.x * vel.x + diff.y * vel.y,
+        -diff.x * vel.y + diff.y * vel.x
+      );
+
+      // 이동 방향으로 길쭉한 타원
+      float rx = uRadius * 0.55;
+      float ry = uRadius * 1.3;
+      float d2 = (local.x * local.x) / (rx * rx) + (local.y * local.y) / (ry * ry);
+      float stamp = uStamp * exp(-d2 * 0.5);
+
+      gl_FragColor = vec4(clamp(prev + stamp, 0.0, 1.0), 0.0, 0.0, 1.0);
+    }
+  `;
+
+  const accumUniforms = {
+    uPrev:     { value: rtA.texture },
+    uMouse:    { value: new THREE.Vector2(0.5, -1.0) },
+    uVelocity: { value: new THREE.Vector2(0.0, 1.0) },
+    uDecay:    { value: 0.982 },
+    uRadius:   { value: 0.11 },  // 현재 대비 ~30% 축소 (0.16 → 0.11)
+    uStamp:    { value: 0.0 },
+    uAspect:   { value: W / H },
+  };
+  const accumScene = new THREE.Scene();
+  accumScene.add(new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2),
+    new THREE.ShaderMaterial({ uniforms: accumUniforms, vertexShader: accumVert, fragmentShader: accumFrag })
+  ));
+
+  // ── Pass 2: 최종 렌더 ──────────────────────────────
   const loader = new THREE.TextureLoader();
   const texture = loader.load('assets/images/hero-bg.png');
   texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
-
   const TEX_ASPECT = 1719 / 915;
 
-  // ── 버텍스 셰이더 ─────────────────────────────
-  const vertexShader = /* glsl */`
-    uniform vec2  uMouse;
-    uniform float uRadius;
-    uniform float uStrength;
-    uniform float uTexAspect;
-    uniform vec2  uResolution;
+  const finalVert = /* glsl */`
+    uniform sampler2D uHeightMap;
+    uniform float     uStrength;
+    uniform float     uTexAspect;
+    uniform vec2      uResolution;
 
     varying vec2  vUv;
     varying float vHeight;
 
     void main() {
       float screenAspect = uResolution.x / uResolution.y;
-
-      // cover UV: 텍스처 비율 맞춤
       vec2 coverUV = uv;
       if (screenAspect > uTexAspect) {
         float scale = uTexAspect / screenAspect;
@@ -64,89 +133,85 @@ gsap.set(line2, { opacity: 0, y: 14 });
       }
       vUv = coverUV;
 
-      vec3 pos  = position;
-      vec2 vPos = (pos.xy + 1.0) * 0.5;
-      vec2 mPos = (uMouse + 1.0) * 0.5;
-
-      vec2 diff = vPos - mPos;
-      diff.x   *= screenAspect;
-      float d   = length(diff);
-
-      // 가우시안 범프
-      float bump = uStrength * exp(-(d * d) / (2.0 * uRadius * uRadius));
-      pos.z     += bump;
-      vHeight    = bump;
+      float h  = texture2D(uHeightMap, uv).r;
+      vHeight  = h;
+      vec3 pos = position;
+      pos.z   += h * uStrength;
 
       gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
   `;
 
-  // ── 프래그먼트 셰이더 ─────────────────────────
-  const fragmentShader = /* glsl */`
+  const finalFrag = /* glsl */`
     uniform sampler2D uTexture;
-    uniform float     uStrength;
-
     varying vec2  vUv;
     varying float vHeight;
 
     void main() {
-      vec4 color = texture2D(uTexture, vUv);
-
-      // 알파: 평면=0.01, 범프=1.0
-      float bumpNorm  = vHeight / max(uStrength, 0.001);
-      float bumpAlpha = mix(0.01, 1.0, smoothstep(0.0, 0.35, bumpNorm));
-
-      // 조명 없이 원본 색 그대로 (볼록 느낌만)
-      gl_FragColor = vec4(color.rgb, bumpAlpha);
+      vec4 color     = texture2D(uTexture, vUv);
+      float bumpAlpha = mix(0.01, 1.0, smoothstep(0.0, 0.35, vHeight));
+      gl_FragColor   = vec4(color.rgb, bumpAlpha);
     }
   `;
 
-  // ── 머티리얼 & 메시 ───────────────────────────
-  const uniforms = {
+  const finalUniforms = {
     uTexture:    { value: texture },
-    uMouse:      { value: new THREE.Vector2(0, -9999) },
-    uRadius:     { value: 0.16 },   // 범프 반경 (작게 = 국소 효과)
-    uStrength:   { value: 0.16 },   // 범프 높이
+    uHeightMap:  { value: rtA.texture },
+    uStrength:   { value: 0.16 },
     uTexAspect:  { value: TEX_ASPECT },
-    uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    uResolution: { value: new THREE.Vector2(W, H) },
   };
+  const finalScene = new THREE.Scene();
+  finalScene.add(new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2, 160, 160),
+    new THREE.ShaderMaterial({ uniforms: finalUniforms, vertexShader: finalVert, fragmentShader: finalFrag, transparent: true })
+  ));
 
-  const material = new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader,
-    fragmentShader,
-    transparent: true,
-  });
-
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 160, 160), material);
-  scene.add(plane);
-
-  // ── 마우스 트래킹 ─────────────────────────────
-  let targetX = 0, targetY = -9999;
-  let mx = 0,      my = -9999;
+  // ── 마우스 트래킹 ──────────────────────────────────
+  const mouseUV   = new THREE.Vector2(0.5, -1.0);
+  const prevMouse = new THREE.Vector2(0.5, -1.0);
+  const velocity  = new THREE.Vector2(0.0, 1.0);
+  let isInHero = false;
 
   heroEl.addEventListener('mousemove', (e) => {
-    targetX =  (e.clientX / window.innerWidth)  * 2 - 1;
-    targetY = -(e.clientY / window.innerHeight) * 2 + 1;
+    mouseUV.set(e.clientX / window.innerWidth, 1.0 - e.clientY / window.innerHeight);
+    isInHero = true;
   });
-
-  heroEl.addEventListener('mouseleave', () => {
-    targetX = 0;
-    targetY = -9999;
-  });
+  heroEl.addEventListener('mouseleave', () => { isInHero = false; });
 
   window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+    W = window.innerWidth; H = window.innerHeight;
+    renderer.setSize(W, H);
+    finalUniforms.uResolution.value.set(W, H);
+    accumUniforms.uAspect.value = W / H;
   });
 
-  // ── 렌더 루프 ─────────────────────────────────
+  // ── 렌더 루프 ──────────────────────────────────────
   function tick() {
     requestAnimationFrame(tick);
-    mx += (targetX - mx) * 0.07;
-    my += (targetY - my) * 0.07;
-    uniforms.uMouse.value.set(mx, my);
-    renderer.render(scene, camera);
+
+    // 속도 계산 (방향만)
+    const vx = mouseUV.x - prevMouse.x;
+    const vy = mouseUV.y - prevMouse.y;
+    const speed = Math.sqrt(vx * vx + vy * vy);
+    if (speed > 0.0002) velocity.set(vx / speed, vy / speed);
+    prevMouse.copy(mouseUV);
+
+    // Pass 1: 누적 버퍼 업데이트
+    accumUniforms.uPrev.value     = rtA.texture;
+    accumUniforms.uMouse.value.copy(mouseUV);
+    accumUniforms.uVelocity.value.copy(velocity);
+    accumUniforms.uStamp.value    = isInHero ? 0.15 : 0.0;
+    renderer.setRenderTarget(rtB);
+    renderer.render(accumScene, orthoCamera);
+
+    // ping-pong
+    const tmp = rtA; rtA = rtB; rtB = tmp;
+
+    // Pass 2: 최종 렌더
+    finalUniforms.uHeightMap.value = rtA.texture;
+    renderer.setRenderTarget(null);
+    renderer.render(finalScene, orthoCamera);
   }
   tick();
 })();
