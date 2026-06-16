@@ -51,10 +51,9 @@ button {
   width: 100%;
   height: 100vh;
   overflow: hidden;
+  background-color: #e1e1e1; /* Three.js 투명 캔버스 아래 바닥 */
 }
 
-
-/* --- 배경 — Three.js 커스텀 셰이더 캔버스 --- */
 .s-hero__bg {
   position: absolute;
   inset: 0;
@@ -63,7 +62,6 @@ button {
 
 #hero-canvas {
   display: block;
-  /* Three.js setSize()가 직접 관리 */
 }
 
 

@@ -15,34 +15,31 @@ gsap.set(line2, { opacity: 0, y: 14 });
    양각 호버 효과 — Three.js 커스텀 셰이더
 
    원리:
-   - PlaneGeometry(2,2, 128,128): 128×128 분할 → 부드러운 곡면
-   - 버텍스 셰이더: 마우스 UV 주변에 가우시안 범프 생성 (국소 영역만 상승)
-   - 프래그먼트 셰이더: dFdx/dFdy로 법선 계산 → 조명 적용
-   - 범프 밖은 PNG 원본 그대로, 마우스 근처만 3D로 솟아오름
+   - 배경: #e1e1e1 (CSS) + 투명 캔버스 (alpha: true)
+   - 평면 구간: PNG 알파 낮음(0.28) → e1e1e1 위에 흐릿하게 깔림
+   - 마우스 근처: Gaussian bump으로 솟아오르며 알파 1.0 + 3D 조명
+   - 범프 기저부: 컨택트 섀도(어두운 고리) → "들려올라오는" 느낌
    ============================================ */
 (function initHeroBg() {
   const canvas = document.getElementById('hero-canvas');
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  // alpha: true → 캔버스 배경 투명, CSS #e1e1e1 바닥이 비침
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0); // 완전 투명
 
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
   camera.position.z = 1;
 
-  // ── 텍스처 로드 ──────────────────────────────
   const loader = new THREE.TextureLoader();
   const texture = loader.load('assets/images/hero-bg.png');
   texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
 
-  // hero-bg.png 원본 비율 (1719×915)
   const TEX_ASPECT = 1719 / 915;
 
   // ── 버텍스 셰이더 ─────────────────────────────
-  // uMouse: 마우스 위치 (-1~1, NDC)
-  // uRadius: 범프 반경 (aspect 보정된 UV 공간)
-  // uStrength: 최대 Z 변위량
   const vertexShader = /* glsl */`
     uniform vec2  uMouse;
     uniform float uRadius;
@@ -54,8 +51,9 @@ gsap.set(line2, { opacity: 0, y: 14 });
     varying float vHeight;
 
     void main() {
-      // cover UV: 화면과 텍스처 비율 맞춤
       float screenAspect = uResolution.x / uResolution.y;
+
+      // cover UV: 텍스처 비율 맞춤
       vec2 coverUV = uv;
       if (screenAspect > uTexAspect) {
         float scale = uTexAspect / screenAspect;
@@ -66,19 +64,15 @@ gsap.set(line2, { opacity: 0, y: 14 });
       }
       vUv = coverUV;
 
-      vec3 pos = position;
-
-      // 버텍스 UV (0~1)
+      vec3 pos  = position;
       vec2 vPos = (pos.xy + 1.0) * 0.5;
-      // 마우스 UV (0~1)
       vec2 mPos = (uMouse + 1.0) * 0.5;
 
-      // aspect 보정 거리 계산 → 화면에서 원형으로 보임
       vec2 diff = vPos - mPos;
       diff.x   *= screenAspect;
       float d   = length(diff);
 
-      // 가우시안 범프 — 마우스 근처만 Z 방향으로 상승
+      // 가우시안 범프
       float bump = uStrength * exp(-(d * d) / (2.0 * uRadius * uRadius));
       pos.z     += bump;
       vHeight    = bump;
@@ -88,10 +82,14 @@ gsap.set(line2, { opacity: 0, y: 14 });
   `;
 
   // ── 프래그먼트 셰이더 ─────────────────────────
-  // dFdx/dFdy로 범프 기울기 → 법선 계산 → 조명 적용
-  // 범프 밖(slope ≈ 0)은 조명 변화 없음 → PNG 원본 그대로 보임
+  // 핵심:
+  //   1. bumpAlpha: 범프 높이에 따라 투명도 0.28 → 1.0
+  //      → 평면 구간: 흐릿, 범프 구간: 완전 불투명
+  //   2. 컨택트 섀도: 범프 기저부(경사 최대 구간) 어둡게
+  //   3. 스펙큘러 하이라이트: 범프 정상부 밝게
   const fragmentShader = /* glsl */`
     uniform sampler2D uTexture;
+    uniform float     uStrength;
 
     varying vec2  vUv;
     varying float vHeight;
@@ -99,46 +97,56 @@ gsap.set(line2, { opacity: 0, y: 14 });
     void main() {
       vec4 color = texture2D(uTexture, vUv);
 
-      // 화면공간 미분으로 표면 법선 추정
+      // ── 1. 알파: 범프 높이 기반 (평면=0.28, 범프=1.0) ──
+      float bumpNorm  = vHeight / max(uStrength, 0.001);
+      float bumpAlpha = mix(0.28, 1.0, smoothstep(0.0, 0.35, bumpNorm));
+
+      // ── 2. 법선 기반 조명 ────────────────────────────
       float dHx = dFdx(vHeight);
       float dHy = dFdy(vHeight);
-      vec3  N   = normalize(vec3(-dHx * 14.0, dHy * 14.0, 1.0));
+      vec3  N   = normalize(vec3(-dHx * 18.0, dHy * 18.0, 1.0));
 
-      // 조명: ambient + diffuse + specular
-      // 캘리브레이션: 플랫 법선(0,0,1)일 때 lighting = 1.0 → 원본 색 보존
-      // L.z = dot((0,0,1), normalize(0.6,0.8,1.5)) ≈ 0.754
-      // ambient = 1.0 - 0.754 * diffuseStr
-      vec3  L            = normalize(vec3(0.6, 0.8, 1.5));
-      vec3  V            = vec3(0.0, 0.0, 1.0);
-      vec3  H            = normalize(L + V);
+      vec3  L   = normalize(vec3(0.8, 1.0, 1.8));
+      vec3  V   = vec3(0.0, 0.0, 1.0);
+      vec3  H   = normalize(L + V);
 
-      float diffuseStr   = 0.26;
-      float ambient      = 1.0 - 0.754 * diffuseStr;   // ≈ 0.804
-      float diffuse      = max(dot(N, L), 0.0) * diffuseStr;
-      float specular     = pow(max(dot(N, H), 0.0), 90.0) * 0.10;
+      float diffuseStr = 0.32;
+      float Lz         = dot(vec3(0,0,1), normalize(vec3(0.8,1.0,1.8)));
+      float ambient    = 1.0 - Lz * diffuseStr;
+      float diffuse    = max(dot(N, L), 0.0) * diffuseStr;
+      float specular   = pow(max(dot(N, H), 0.0), 80.0) * 0.18;
 
-      // 범프 밖: ambient + diffuse(flat) ≈ 1.0 → 원본 그대로
-      // 범프 엣지: diffuse 변화 + specular → 3D 음영 표현
-      float lighting = ambient + diffuse + specular;
+      // ── 3. 컨택트 섀도 — 범프 기저부(경사 최대 구간) 어둡게 ──
+      float slope       = length(vec2(dHx, dHy));
+      float contactDark = 1.0 - clamp(slope * 10.0, 0.0, 0.45);
 
-      gl_FragColor = vec4(color.rgb * lighting, 1.0);
+      // ── 4. 범프 정상부 밝기 보정 ─────────────────────
+      float peakBoost = 1.0 + smoothstep(0.6, 1.0, bumpNorm) * 0.12;
+
+      float lighting = (ambient + diffuse + specular) * contactDark * peakBoost;
+
+      gl_FragColor = vec4(color.rgb * lighting, bumpAlpha);
     }
   `;
 
   // ── 머티리얼 & 메시 ───────────────────────────
   const uniforms = {
     uTexture:    { value: texture },
-    uMouse:      { value: new THREE.Vector2(0, -9999) }, // 초기값: 화면 밖
-    uRadius:     { value: 0.22 },   // 범프 반경 (aspect 보정 UV 기준)
-    uStrength:   { value: 0.11 },   // 최대 Z 변위
+    uMouse:      { value: new THREE.Vector2(0, -9999) },
+    uRadius:     { value: 0.16 },   // 범프 반경 (작게 = 국소 효과)
+    uStrength:   { value: 0.16 },   // 범프 높이
     uTexAspect:  { value: TEX_ASPECT },
     uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
   };
 
-  const material = new THREE.ShaderMaterial({ uniforms, vertexShader, fragmentShader });
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader,
+    fragmentShader,
+    transparent: true,
+  });
 
-  // 128×128 분할 — 가우시안 곡면을 부드럽게 표현
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 128, 128), material);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 160, 160), material);
   scene.add(plane);
 
   // ── 마우스 트래킹 ─────────────────────────────
@@ -150,7 +158,6 @@ gsap.set(line2, { opacity: 0, y: 14 });
     targetY = -(e.clientY / window.innerHeight) * 2 + 1;
   });
 
-  // 마우스가 섹션 벗어나면 범프 화면 밖으로 이동
   heroEl.addEventListener('mouseleave', () => {
     targetX = 0;
     targetY = -9999;
@@ -164,8 +171,8 @@ gsap.set(line2, { opacity: 0, y: 14 });
   // ── 렌더 루프 ─────────────────────────────────
   function tick() {
     requestAnimationFrame(tick);
-    mx += (targetX - mx) * 0.08;
-    my += (targetY - my) * 0.08;
+    mx += (targetX - mx) * 0.07;
+    my += (targetY - my) * 0.07;
     uniforms.uMouse.value.set(mx, my);
     renderer.render(scene, camera);
   }
