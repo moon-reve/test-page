@@ -63,7 +63,6 @@ gsap.set(line2, { opacity: 0, y: 14 });
     precision highp float;
     uniform sampler2D uPrev;
     uniform vec2  uMouse;
-    uniform vec2  uVelocity;
     uniform float uDecay;
     uniform float uRadius;
     uniform float uStamp;
@@ -73,19 +72,10 @@ gsap.set(line2, { opacity: 0, y: 14 });
     void main() {
       float prev = texture2D(uPrev, vUv).r * uDecay;
 
-      // aspect 보정 후 속도 방향으로 좌표 회전
-      vec2 diff  = vUv - uMouse;
-      diff.x    *= uAspect;
-      vec2 vel   = normalize(uVelocity + vec2(0.00001, 0.0));
-      vec2 local = vec2(
-         diff.x * vel.x + diff.y * vel.y,
-        -diff.x * vel.y + diff.y * vel.x
-      );
-
-      // 이동 방향으로 길쭉한 타원
-      float rx = uRadius * 0.55;
-      float ry = uRadius * 1.3;
-      float d2 = (local.x * local.x) / (rx * rx) + (local.y * local.y) / (ry * ry);
+      // aspect 보정 후 원형 거리 계산
+      vec2 diff = vUv - uMouse;
+      diff.x   *= uAspect;
+      float d2  = dot(diff, diff) / (uRadius * uRadius);
       float stamp = uStamp * exp(-d2 * 0.5);
 
       gl_FragColor = vec4(clamp(prev + stamp, 0.0, 1.0), 0.0, 0.0, 1.0);
@@ -93,13 +83,12 @@ gsap.set(line2, { opacity: 0, y: 14 });
   `;
 
   const accumUniforms = {
-    uPrev:     { value: rtA.texture },
-    uMouse:    { value: new THREE.Vector2(0.5, -1.0) },
-    uVelocity: { value: new THREE.Vector2(0.0, 1.0) },
-    uDecay:    { value: 0.982 },
-    uRadius:   { value: 0.055 }, // 50% 축소
-    uStamp:    { value: 0.0 },
-    uAspect:   { value: W / H },
+    uPrev:   { value: rtA.texture },
+    uMouse:  { value: new THREE.Vector2(0.5, -1.0) },
+    uDecay:  { value: 0.982 },
+    uRadius: { value: 0.055 },
+    uStamp:  { value: 0.0 },
+    uAspect: { value: W / H },
   };
   const accumScene = new THREE.Scene();
   accumScene.add(new THREE.Mesh(
@@ -163,10 +152,8 @@ gsap.set(line2, { opacity: 0, y: 14 });
   ));
 
   // ── 마우스 트래킹 ──────────────────────────────────
-  const mouseUV   = new THREE.Vector2(0.5, -1.0);
-  const prevMouse = new THREE.Vector2(0.5, -1.0);
-  const velocity  = new THREE.Vector2(0.0, 1.0);
-  let isInHero = false;
+  const mouseUV = new THREE.Vector2(0.5, -1.0);
+  let isInHero  = false;
 
   heroEl.addEventListener('mousemove', (e) => {
     mouseUV.set(e.clientX / window.innerWidth, 1.0 - e.clientY / window.innerHeight);
@@ -185,18 +172,10 @@ gsap.set(line2, { opacity: 0, y: 14 });
   function tick() {
     requestAnimationFrame(tick);
 
-    // 속도 계산 (방향만)
-    const vx = mouseUV.x - prevMouse.x;
-    const vy = mouseUV.y - prevMouse.y;
-    const speed = Math.sqrt(vx * vx + vy * vy);
-    if (speed > 0.0002) velocity.set(vx / speed, vy / speed);
-    prevMouse.copy(mouseUV);
-
     // Pass 1: 누적 버퍼 업데이트
-    accumUniforms.uPrev.value     = rtA.texture;
+    accumUniforms.uPrev.value  = rtA.texture;
     accumUniforms.uMouse.value.copy(mouseUV);
-    accumUniforms.uVelocity.value.copy(velocity);
-    accumUniforms.uStamp.value    = isInHero ? 0.15 : 0.0;
+    accumUniforms.uStamp.value = isInHero ? 0.15 : 0.0;
     renderer.setRenderTarget(rtB);
     renderer.render(accumScene, orthoCamera);
 
