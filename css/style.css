@@ -54,7 +54,7 @@ button {
 }
 
 
-/* --- 배경 — Three.js 캔버스 컨테이너 --- */
+/* --- 배경 — Three.js 커스텀 셰이더 캔버스 --- */
 .s-hero__bg {
   position: absolute;
   inset: 0;
@@ -63,7 +63,7 @@ button {
 
 #hero-canvas {
   display: block;
-  /* Three.js가 setSize()로 직접 관리 — CSS 오버라이드 없음 */
+  /* Three.js setSize()가 직접 관리 */
 }
 
 
