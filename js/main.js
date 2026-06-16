@@ -97,7 +97,7 @@ gsap.set(line2, { opacity: 0, y: 14 });
     uMouse:    { value: new THREE.Vector2(0.5, -1.0) },
     uVelocity: { value: new THREE.Vector2(0.0, 1.0) },
     uDecay:    { value: 0.982 },
-    uRadius:   { value: 0.11 },  // 현재 대비 ~30% 축소 (0.16 → 0.11)
+    uRadius:   { value: 0.055 }, // 50% 축소
     uStamp:    { value: 0.0 },
     uAspect:   { value: W / H },
   };
